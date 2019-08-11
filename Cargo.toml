@@ -1,0 +1,16 @@
+[package]
+name = "pyosmptparser"
+version = "0.0.1"
+authors = ["Julian Perelli <jperelli@gmail.com>"]
+edition = "2018"
+license = "AGPL-3.0-or-later"
+readme = "README.md"
+
+[lib]
+name = "pyosmptparser"
+crate-type = ["cdylib"]
+
+[dependencies]
+osmptparser = { git = "https://github.com/cualbondi/osmptparser", rev = "775bb442303" }
+pyo3 = { version = "0.7.0", features = ["extension-module"] }
+num_cpus = "1.10"
