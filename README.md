@@ -8,7 +8,7 @@ virtualenv --python python3 .env
 source .env/bin/activate
 
 # run tests
-pip3 install tox
+pip3 install tox pyo3-pack
 tox
 
 # build and copy

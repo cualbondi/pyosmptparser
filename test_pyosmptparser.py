@@ -12,10 +12,12 @@ def test_it_works():
     pt1 = [p for p in pts if p.id == 85965][0]
     assert pt1.tags['name'] == 'Trolebus Quitumbe => La Y'
     assert len(pt1.geometry) == 0
+    assert pt1.status.code == 501
 
     pt2 = [p for p in pts if p.id == 2030162][0]
     assert pt2.tags['name'] == 'B6 Mapasingue Oeste Ida'
     assert len(pt2.geometry) == 1
+    assert pt2.status.code == 0
 
     pts = p.get_public_transports(1500)
     pt1 = [p for p in pts if p.id == 85965][0]

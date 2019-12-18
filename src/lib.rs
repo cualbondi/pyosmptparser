@@ -30,9 +30,18 @@ impl Node {
     fn get_tags(&self) -> PyResult<PyObject> {
         let gil = Python::acquire_gil();
         let py = gil.python();
-        Ok(self.tags.clone().into_object(py))
+        Ok(self.tags.clone().into_py(py))
     }
 
+}
+
+#[pyclass(dict)]
+#[derive(Clone)]
+pub struct ParseStatus {
+    #[pyo3(get, set)]
+    pub code: u64,
+    #[pyo3(get, set)]
+    pub detail: String,
 }
 
 #[pyclass(dict)]
@@ -42,6 +51,7 @@ pub struct PublicTransport {
     pub tags: HashMap<String, String>,
     pub stops: Vec<Node>,
     pub geometry: Vec<Vec<(f64, f64)>>, // lon, lat
+    pub status: ParseStatus,
 }
 
 #[pymethods]
@@ -51,14 +61,14 @@ impl PublicTransport {
     fn get_tags(&self) -> PyResult<PyObject> {
         let gil = Python::acquire_gil();
         let py = gil.python();
-        Ok(self.tags.clone().into_object(py))
+        Ok(self.tags.clone().into_py(py))
     }
 
     #[getter(stops)]
     fn get_stops(&self) -> PyResult<PyObject> {
         let gil = Python::acquire_gil();
         let py = gil.python();
-        Ok(self.stops.clone().into_object(py))
+        Ok(self.stops.clone().into_py(py))
     }
 
     #[getter(geometry)]
@@ -66,10 +76,17 @@ impl PublicTransport {
         let gil = Python::acquire_gil();
         let py = gil.python();
         let geom: Vec<PyObject> = self.geometry.iter().map(|v| {
-            let v: Vec<PyObject> = v.iter().map(|(lon, lat)| (lon.into_object(py), lat.into_object(py)).into_object(py)).collect();
-            v.into_object(py)
+            let v: Vec<PyObject> = v.iter().map(|(lon, lat)| (lon.to_object(py), lat.to_object(py)).into_py(py)).collect();
+            v.into_py(py)
         }).collect();
-        Ok(geom.into_object(py))
+        Ok(geom.into_py(py))
+    }
+
+    #[getter(status)]
+    fn get_status(&self) -> PyResult<PyObject> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        Ok(self.status.clone().into_py(py))
     }
 
 }
@@ -99,7 +116,7 @@ impl Parser {
         let p = self.p.clone();
         let ret = py.allow_threads(move ||
             p.par_map(& move |r| {
-                let f = r.flatten_ways(gap).unwrap();
+                let (f, s) = r.flatten_ways(gap).unwrap();
                 PublicTransport {
                     id: r.id,
                     tags: r.tags,
@@ -113,6 +130,10 @@ impl Parser {
                         .iter()
                         .map(|v| v.iter().map(|n| (n.lon, n.lat)).collect())
                         .collect(),
+                    status: ParseStatus {
+                        code: s.code,
+                        detail: s.detail,
+                    },
                 }
             })
         );
