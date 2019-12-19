@@ -49,6 +49,7 @@ pub struct PublicTransport {
     #[pyo3(get, set)]
     pub id: u64,
     pub tags: HashMap<String, String>,
+    pub info: HashMap<String, String>,
     pub stops: Vec<Node>,
     pub geometry: Vec<Vec<(f64, f64)>>, // lon, lat
     pub status: ParseStatus,
@@ -62,6 +63,13 @@ impl PublicTransport {
         let gil = Python::acquire_gil();
         let py = gil.python();
         Ok(self.tags.clone().into_py(py))
+    }
+
+    #[getter(info)]
+    fn get_info(&self) -> PyResult<PyObject> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        Ok(self.info.clone().into_py(py))
     }
 
     #[getter(stops)]
@@ -120,6 +128,7 @@ impl Parser {
                 PublicTransport {
                     id: r.id,
                     tags: r.tags,
+                    info: r.info,
                     stops: r.stops.iter().map(|n| Node {
                         id: n.id,
                         tags: n.tags.clone(),
