@@ -12,7 +12,7 @@ pip3 install tox
 tox
 
 # build and copy
-pyo3-pack develop
+maturin develop
 cp target/debug/libpyosmptparser.so pyosmptparser.so
 
 # build and deploy

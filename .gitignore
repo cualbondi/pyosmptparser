@@ -2,3 +2,5 @@
 **/*.rs.bk
 .env/
 .tox
+__pycache__
+pyosmptparser.so
