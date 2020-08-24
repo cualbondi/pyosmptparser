@@ -28,13 +28,24 @@ impl Node {
     }
 }
 
+#[pyclass]
+#[derive(Clone)]
+struct ParseStatus {
+    #[pyo3(get, set)]
+    code: u64,
+    #[pyo3(get, set)]
+    detail: String,
+}
+
 #[pyclass(dict)]
 struct PublicTransport {
     #[pyo3(get, set)]
     pub id: u64,
     pub tags: HashMap<String, String>,
+    pub info: HashMap<String, String>,
     pub stops: Vec<Node>,
     pub geometry: Vec<Vec<(f64, f64)>>, // lon, lat
+    pub status: ParseStatus,
 }
 
 #[pymethods]
@@ -44,6 +55,13 @@ impl PublicTransport {
         let gil = Python::acquire_gil();
         let py = gil.python();
         Ok(self.tags.to_object(py))
+    }
+
+    #[getter(info)]
+    fn get_info(&self) -> PyResult<PyObject> {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        Ok(self.info.to_object(py))
     }
 
     #[getter(stops)]
@@ -63,6 +81,13 @@ impl PublicTransport {
         //     v.to_object(py)
         // }).collect();
         // Ok(geom)
+    }
+
+    #[getter(status)]
+    fn get_status(&self) -> PyResult<ParseStatus> {
+        // let gil = Python::acquire_gil();
+        // let py = gil.python();
+        Ok(self.status.clone())
     }
 }
 
@@ -93,6 +118,7 @@ impl Parser {
                 PublicTransport {
                     id: r.id,
                     tags: r.tags,
+                    info: r.info,
                     stops: r
                         .stops
                         .iter()
@@ -108,6 +134,10 @@ impl Parser {
                         .iter()
                         .map(|v| v.iter().map(|n| (n.lon, n.lat)).collect())
                         .collect(),
+                    status: ParseStatus {
+                        code: f.1.code,
+                        detail: f.1.detail,
+                    },
                 }
             })
         });
@@ -121,6 +151,7 @@ fn pyosmptparser(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Node>()?;
     m.add_class::<PublicTransport>()?;
     m.add_class::<Parser>()?;
+    m.add_class::<ParseStatus>()?;
 
     Ok(())
 }
