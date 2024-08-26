@@ -6,7 +6,7 @@ import pytest
 
 
 def test_it_works():
-    p = pyosmptparser.Parser('test.pbf')
+    p = pyosmptparser.Parser.new_ptv2('test.pbf')
     pts = p.get_public_transports(150)
 
     pt1 = [p for p in pts if p.id == 85965][0]
