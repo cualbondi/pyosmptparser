@@ -10,7 +10,7 @@ pypi package: https://pypi.org/project/pyosmptparser/
 pip install pyosmptparser
 ```
 
-Prebuilt wheels are published for Linux (glibc and musl, x86_64 and aarch64), macOS (Intel and Apple Silicon) and Windows, for any CPython >= 3.9 (abi3). Other platforms build from the sdist, which needs a Rust toolchain.
+Prebuilt wheels are published for Linux (glibc >= 2.28 and musl, x86_64 and aarch64), macOS (Intel and Apple Silicon) and Windows, for any CPython >= 3.9 (abi3). Other platforms build from the sdist, which needs a Rust toolchain.
 
 ## Usage
 
