@@ -1,0 +1,197 @@
+# Based on `maturin generate-ci github --pytest`, trimmed to the targets we ship.
+# Wheels are abi3 (one wheel per platform works on every CPython >= 3.9).
+# Pushing a tag (e.g. `v3.0.0`) builds everything and publishes to PyPI via
+# trusted publishing (configure it once at https://pypi.org/manage/project/pyosmptparser/settings/publishing/
+# with owner `cualbondi`, repository `pyosmptparser`, workflow `CI.yml`).
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt -- --check
+      - run: cargo clippy --all-targets -- -D warnings
+
+  linux:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          manylinux: auto
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-linux-${{ matrix.target }}
+          path: dist
+      - name: pytest
+        if: ${{ matrix.target == 'x86_64' }}
+        run: |
+          set -e
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install pytest
+          pip install pyosmptparser --no-index --no-deps --find-links dist --force-reinstall
+          pytest
+
+  musllinux:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        target: [x86_64, aarch64]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          manylinux: musllinux_1_2
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-musllinux-${{ matrix.target }}
+          path: dist
+      - name: pytest
+        if: ${{ matrix.target == 'x86_64' }}
+        run: |
+          set -e
+          docker run --rm -v ${{ github.workspace }}:/io -w /io alpine:latest sh -c '
+            apk add py3-pip py3-virtualenv
+            python3 -m virtualenv .venv
+            source .venv/bin/activate
+            pip install pytest
+            pip install pyosmptparser --no-index --no-deps --find-links dist --force-reinstall
+            pytest
+          '
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: x64
+          args: --release --out dist
+          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-windows-x64
+          path: dist
+      - name: pytest
+        shell: bash
+        run: |
+          set -e
+          python -m venv .venv
+          source .venv/Scripts/activate
+          pip install pytest
+          pip install pyosmptparser --no-index --no-deps --find-links dist --force-reinstall
+          pytest
+
+  macos:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: macos-15-intel
+            target: x86_64
+          - runner: macos-latest
+            target: aarch64
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist
+          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+      - name: Upload wheels
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-macos-${{ matrix.platform.target }}
+          path: dist
+      - name: pytest
+        run: |
+          set -e
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install pytest
+          pip install pyosmptparser --no-index --no-deps --find-links dist --force-reinstall
+          pytest
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - name: Upload sdist
+        uses: actions/upload-artifact@v6
+        with:
+          name: wheels-sdist
+          path: dist
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    needs: [lint, linux, musllinux, windows, macos, sdist]
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v7
+      - name: Generate artifact attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: 'wheels-*/*'
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: .
+          skip-existing: true
+        env:
+          PIP_FIND_LINKS: ""

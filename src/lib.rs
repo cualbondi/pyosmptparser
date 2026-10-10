@@ -1,17 +1,18 @@
-extern crate num_cpus;
-extern crate osmptparser;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 
-use pyo3::{prelude::*, types::PyType};
-use std::collections::HashMap;
+use osmptparser::{Parser as LibParser, Tags};
 
-use osmptparser::Parser as libParser;
+fn threads(num_threads_option: Option<usize>) -> usize {
+    num_threads_option.unwrap_or_else(num_cpus::get)
+}
 
 #[pyclass(dict)]
 #[derive(Clone)]
 struct Node {
     #[pyo3(get, set)]
     pub id: u64,
-    pub tags: HashMap<String, String>,
+    pub tags: Tags,
     #[pyo3(get, set)]
     pub lon: f64,
     #[pyo3(get, set)]
@@ -21,8 +22,12 @@ struct Node {
 #[pymethods]
 impl Node {
     #[getter(tags)]
-    fn get_tags(&self) -> PyResult<PyObject> {
-        Ok(Python::with_gil(|py| self.tags.to_object(py)))
+    fn get_tags<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        Ok(self.tags.as_ref().into_pyobject(py)?.into_any())
+    }
+
+    fn __repr__(&self) -> String {
+        format!("Node(id={}, lon={}, lat={})", self.id, self.lon, self.lat)
     }
 }
 
@@ -35,12 +40,28 @@ struct ParseStatus {
     detail: String,
 }
 
+#[pymethods]
+impl ParseStatus {
+    fn __repr__(&self) -> String {
+        format!("ParseStatus(code={}, detail={:?})", self.code, self.detail)
+    }
+}
+
+impl From<osmptparser::ParseStatus> for ParseStatus {
+    fn from(status: osmptparser::ParseStatus) -> Self {
+        ParseStatus {
+            code: status.code(),
+            detail: status.detail().to_string(),
+        }
+    }
+}
+
 #[pyclass(dict)]
 struct PublicTransport {
     #[pyo3(get, set)]
     pub id: u64,
-    pub tags: HashMap<String, String>,
-    pub info: HashMap<String, String>,
+    pub tags: Tags,
+    pub info: Tags,
     pub stops: Vec<Node>,
     pub geometry: Vec<Vec<(f64, f64)>>, // lon, lat
     pub status: ParseStatus,
@@ -49,95 +70,97 @@ struct PublicTransport {
 #[pymethods]
 impl PublicTransport {
     #[getter(tags)]
-    fn get_tags(&self) -> PyResult<PyObject> {
-        Ok(Python::with_gil(|py| self.tags.to_object(py)))
+    fn get_tags<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        Ok(self.tags.as_ref().into_pyobject(py)?.into_any())
     }
 
     #[getter(info)]
-    fn get_info(&self) -> PyResult<PyObject> {
-        Ok(Python::with_gil(|py| self.info.to_object(py)))
+    fn get_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        Ok(self.info.as_ref().into_pyobject(py)?.into_any())
     }
 
     #[getter(stops)]
-    fn get_stops(&self) -> PyResult<Vec<Node>> {
-        Ok(self.stops.clone())
+    fn get_stops(&self) -> Vec<Node> {
+        self.stops.clone()
     }
 
     #[getter(geometry)]
-    fn get_geometry(&self) -> PyResult<PyObject> {
-        Ok(Python::with_gil(|py| self.geometry.to_object(py)))
+    fn get_geometry<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        Ok(self.geometry.clone().into_pyobject(py)?.into_any())
     }
 
     #[getter(status)]
-    fn get_status(&self) -> PyResult<ParseStatus> {
-        Ok(self.status.clone())
+    fn get_status(&self) -> ParseStatus {
+        self.status.clone()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "PublicTransport(id={}, name={:?}, status={})",
+            self.id,
+            self.tags.get("name").map(String::as_str).unwrap_or(""),
+            self.status.code
+        )
     }
 }
 
 #[pyclass]
 struct Parser {
-    p: libParser,
+    p: LibParser,
 }
 
 #[pymethods]
 impl Parser {
+    /// Parse the public transport v2 relations of a .pbf file
     #[classmethod]
+    #[pyo3(signature = (path, num_threads=None))]
     fn new_ptv2(
-        cls: &Bound<'_, PyType>,
+        _cls: &Bound<'_, PyType>,
+        py: Python<'_>,
         path: String,
-        num_threads_option: Option<usize>,
+        num_threads: Option<usize>,
     ) -> PyResult<Self> {
-        let num_threads = match num_threads_option {
-            Some(nt) => nt,
-            None => num_cpus::get(),
-        };
-
-        let p = Python::with_gil(|py| {
-            py.allow_threads(move || libParser::new_ptv2(&path, num_threads))
-        });
+        let n = threads(num_threads);
+        let p = py.detach(move || LibParser::new_ptv2(&path, n))?;
         Ok(Parser { p })
     }
 
+    /// Parse the administrative area relations of a .pbf file
     #[classmethod]
+    #[pyo3(signature = (path, num_threads=None))]
     fn new_aa(
-        cls: &Bound<'_, PyType>,
+        _cls: &Bound<'_, PyType>,
+        py: Python<'_>,
         path: String,
-        num_threads_option: Option<usize>,
+        num_threads: Option<usize>,
     ) -> PyResult<Self> {
-        let num_threads = match num_threads_option {
-            Some(nt) => nt,
-            None => num_cpus::get(),
-        };
-
-        let p =
-            Python::with_gil(|py| py.allow_threads(move || libParser::new_aa(&path, num_threads)));
+        let n = threads(num_threads);
+        let p = py.detach(move || LibParser::new_aa(&path, n))?;
         Ok(Parser { p })
     }
 
+    /// Parse the relations and ways of a .pbf file matching an osmptparser tag filter
+    /// (e.g. "route=bus,trolleybus&type=route")
     #[new]
-    #[classmethod]
+    #[pyo3(signature = (path, filter, num_threads=None))]
     fn py_new(
-        cls: &Bound<'_, PyType>,
+        py: Python<'_>,
         path: String,
         filter: String,
-        num_threads_option: Option<usize>,
+        num_threads: Option<usize>,
     ) -> PyResult<Self> {
-        let num_threads = match num_threads_option {
-            Some(nt) => nt,
-            None => num_cpus::get(),
-        };
-
-        let p = Python::with_gil(|py| {
-            py.allow_threads(move || libParser::new(&path, num_threads, filter))
-        });
+        let n = threads(num_threads);
+        let p = py.detach(move || LibParser::new(&path, n, filter))?;
         Ok(Parser { p })
     }
 
-    fn get_public_transports(&self, py: Python<'_>, gap: f64) -> PyResult<Vec<PublicTransport>> {
+    /// Build one PublicTransport per parsed relation, joining its ways with the given gap
+    /// tolerance in meters
+    fn get_public_transports(&self, py: Python<'_>, gap: f64) -> Vec<PublicTransport> {
         let p = self.p.clone();
-        let ret = py.allow_threads(move || {
+        py.detach(move || {
             p.par_map(&move |r| {
-                let f = r.flatten_ways(gap, false).unwrap();
+                let (ways, status) = r.flatten_ways(gap, false);
                 PublicTransport {
                     id: r.id,
                     tags: r.tags,
@@ -152,29 +175,24 @@ impl Parser {
                             lat: n.lat,
                         })
                         .collect(),
-                    geometry: f
-                        .0
+                    geometry: ways
                         .iter()
                         .map(|v| v.iter().map(|n| (n.lon, n.lat)).collect())
                         .collect(),
-                    status: ParseStatus {
-                        code: f.1.code,
-                        detail: f.1.detail,
-                    },
+                    status: status.into(),
                 }
             })
-        });
-        Ok(ret)
+        })
     }
 }
 
-/// This module is a python module implemented in Rust.
+/// Python bindings for osmptparser
 #[pymodule]
 fn pyosmptparser(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_class::<Node>()?;
     m.add_class::<PublicTransport>()?;
     m.add_class::<Parser>()?;
     m.add_class::<ParseStatus>()?;
-
     Ok(())
 }

@@ -1,6 +1,8 @@
 /target
 **/*.rs.bk
 .env/
+.venv/
 .tox
 __pycache__
 pyosmptparser.so
+/dist

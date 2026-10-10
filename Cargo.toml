@@ -1,10 +1,12 @@
 [package]
 name = "pyosmptparser"
-version = "2.2.0"
+version = "3.0.0"
 authors = ["Julian Perelli <jperelli@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "AGPL-3.0-or-later"
 readme = "README.md"
+description = "Python bindings for osmptparser, the OpenStreetMap public transport parser"
+repository = "https://github.com/cualbondi/pyosmptparser"
 
 [lib]
 name = "pyosmptparser"
@@ -13,6 +15,6 @@ crate-type = ["cdylib"]
 [dependencies]
 # osmptparser = { path = "../osmptparser" }
 # osmptparser = { git = "https://github.com/cualbondi/osmptparser", rev = "775bb442303" }
-osmptparser = "2.2.0"
-pyo3 = { version = "0.22.2", features = ["extension-module"] }
-num_cpus = "1.16.0"
+osmptparser = "3.0.0"
+pyo3 = { version = "0.27", features = ["extension-module", "abi3-py39"] }
+num_cpus = "1.17.0"

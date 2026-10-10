@@ -2,5 +2,28 @@
 requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
+[project]
+name = "pyosmptparser"
+description = "Python bindings for osmptparser, the OpenStreetMap public transport parser"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "Julian Perelli", email = "jperelli@gmail.com" }]
+keywords = ["openstreetmap", "osm", "pbf", "public transport", "gtfs", "rust"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/cualbondi/pyosmptparser"
+Repository = "https://github.com/cualbondi/pyosmptparser"
+Changelog = "https://github.com/cualbondi/pyosmptparser/blob/master/CHANGELOG.md"
+"Rust library" = "https://github.com/cualbondi/osmptparser"
+
 [tool.maturin]
 bindings = "pyo3"

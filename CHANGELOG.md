@@ -1,0 +1,31 @@
+## v3.0.0
+
+Upgrade to [osmptparser v3.0.0](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md) (faster, bugfixes). The Python API is unchanged: `Parser.new_ptv2`, `Parser.new_aa`, `Parser(path, filter)`, `get_public_transports(gap)`, and the `PublicTransport` / `Node` / `ParseStatus` attributes keep the same names and values.
+
+ - Changed: built on osmptparser 3.0.0. Progress logging to stderr is now silent unless the `OSMSM_VERBOSE` env var is set.
+ - Changed: a missing or unreadable `.pbf` raises `FileNotFoundError` / `OSError` instead of aborting the interpreter with a Rust panic.
+ - Changed: wheels are now [abi3](https://docs.python.org/3/c-api/stable.html) (`cp39-abi3`), so one wheel per platform works on every CPython >= 3.9 (previously only a cp312 wheel was published).
+ - Added: `pyosmptparser.__version__`.
+ - Added: `repr()` for `PublicTransport`, `Node` and `ParseStatus`.
+ - Added: GitHub Actions workflow that builds Linux (glibc + musl, x86_64 + aarch64), macOS and Windows wheels plus the sdist, runs the tests, and publishes to PyPI on `v*` tags.
+ - Internal: pyo3 0.22 -> 0.27, Rust edition 2021.
+
+## v2.2.0
+
+ - Upgrade to osmptparser 2.2.0 and latest maturin.
+
+## v1.2.2
+
+ - Upgrade to osmptparser 1.2.2 and maturin.
+
+## v1.2.0
+
+ - Added `info` field to expose public transport osm metadata.
+
+## v1.1.0
+
+ - Added `ParseStatus` to `PublicTransport`.
+
+## v1.0.0
+
+ - Initial release.
