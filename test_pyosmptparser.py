@@ -130,3 +130,13 @@ def test_node_role():
 def test_missing_file_raises_for_areas():
     with pytest.raises(FileNotFoundError):
         pyosmptparser.Parser.new_aa('does-not-exist.pbf')
+
+
+def test_results_are_sorted_by_id_whatever_the_thread_count():
+    ids = [(a.id_type, a.id) for a in pyosmptparser.Parser.new_aa('areas.pbf', 1).get_areas(150)]
+    assert ids == [('r', 100), ('r', 200), ('r', 300), ('w', 6)]
+    assert ids == [(a.id_type, a.id) for a in pyosmptparser.Parser.new_aa('areas.pbf', 3).get_areas(150)]
+
+    pt_ids = [pt.id for pt in pyosmptparser.Parser.new_ptv2('test.pbf', 1).get_public_transports(150)]
+    assert pt_ids == [85965, 2030162]
+    assert pt_ids == [pt.id for pt in pyosmptparser.Parser.new_ptv2('test.pbf', 4).get_public_transports(150)]
