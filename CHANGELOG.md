@@ -1,3 +1,13 @@
+## v4.0.0
+
+Areas: upgrade to [osmptparser v4.0.0](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md), which assembles areas as real multipolygons and keeps relation member roles.
+
+ - Added: `Parser.get_areas(gap)` returns a list of `Area` for the relations matching the filter (`Parser.new_aa`, or any `Parser(path, filter)`) plus the standalone closed ways matching it.
+ - Added: `Area` class: `id`, `id_type` (`'r'` relation / `'w'` way), `tags`, `info`, `geometry` (list of polygons, each a list of closed `(lon, lat)` rings, first ring outer, rest holes; `[]` when broken), `status` (`ParseStatus`), `repr()`.
+ - Added: `Node.role`, the osm relation member role of a stop (`'stop'`, `'platform'`, ...), also shown in `repr()`.
+ - Added: `areas.pbf` test fixture and tests for `get_areas`, `Node.role` and the missing-file error of `new_aa`.
+ - Unchanged: `Parser.new_ptv2`, `Parser.new_aa`, `Parser(path, filter)`, `get_public_transports(gap)` and the `PublicTransport` / `ParseStatus` attributes.
+
 ## v3.0.0
 
 Upgrade to [osmptparser v3.0.0](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md) (faster, bugfixes). The Python API is unchanged: `Parser.new_ptv2`, `Parser.new_aa`, `Parser(path, filter)`, `get_public_transports(gap)`, and the `PublicTransport` / `Node` / `ParseStatus` attributes keep the same names and values.

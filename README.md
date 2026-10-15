@@ -1,6 +1,6 @@
 # pyosmptparser
 
-Python bindings for [osmptparser](https://github.com/cualbondi/osmptparser), a fast, parallel parser that reads public transport (PTv2) relations from an OpenStreetMap `.pbf` extract, reconnects broken/disconnected ways with some tolerance and returns each route as an ordered geometry plus its stops.
+Python bindings for [osmptparser](https://github.com/cualbondi/osmptparser), a fast, parallel parser that reads public transport (PTv2) relations and areas (administrative boundaries, or any tag filter) from an OpenStreetMap `.pbf` extract, reconnects broken/disconnected ways with some tolerance and returns each route as an ordered geometry plus its stops, and each area as a multipolygon.
 
 pypi package: https://pypi.org/project/pyosmptparser/
 
@@ -25,22 +25,41 @@ for pt in pts:
     pt.tags          # dict of osm tags, e.g. pt.tags['name']
     pt.info          # dict of osm metadata: version, timestamp (epoch seconds), changeset, uid, user
     pt.geometry      # list of linestrings, each a list of (lon, lat); 1 linestring when fully joined
-    pt.stops         # list of Node(id, lon, lat, tags) in relation member order
+    pt.stops         # list of Node(id, lon, lat, tags, role) in relation member order; role is the osm member role ('stop', 'platform', ...)
     pt.status.code   # 0 ok, 101 sorted, 102 joined, 103 joined+sorted, 501 broken
     pt.status.detail
 ```
 
+Areas (administrative boundaries, or any tag filter):
+
+```python
+p = pyosmptparser.Parser.new_aa('portugal-latest.osm.pbf')    # name & admin_level & boundary=administrative
+areas = p.get_areas(150)                                      # bridge gaps up to 150 m
+
+for area in areas:
+    area.id          # osm id
+    area.id_type     # 'r' for a relation, 'w' for a standalone closed way with the tags
+    area.tags        # dict of osm tags, e.g. area.tags['admin_level'], area.tags['name']
+    area.info        # dict of osm metadata: version, timestamp (epoch seconds), changeset, uid, user
+    area.geometry    # multipolygon: list of polygons, each a list of rings, each a closed list of (lon, lat);
+                     # ring 0 of a polygon is the outer ring (osm role 'outer'), the rest are holes ('inner').
+                     # [] when status is broken
+    area.status      # same ParseStatus as public transports
+```
+
+Rings are chained by shared nodes whatever the member order, gaps up to `gap` meters are bridged, and an area with any ring that cannot be closed is reported broken with an empty geometry. For GeoDjango/shapely: `MultiPolygon(*[Polygon(*rings) for rings in area.geometry])`.
+
 Other constructors:
 
 ```python
-pyosmptparser.Parser.new_aa('file.pbf')                       # administrative boundary relations
-pyosmptparser.Parser('file.pbf', 'route=bus,trolleybus')      # any osmptparser tag filter
+pyosmptparser.Parser('file.pbf', 'route=bus,trolleybus')      # any osmptparser tag filter, see
+                                                              # https://github.com/cualbondi/osmptparser#cli
 pyosmptparser.Parser.new_ptv2('file.pbf', num_threads=4)      # default: all cpus
 ```
 
 A missing or unreadable file raises `FileNotFoundError` / `OSError`. Set `OSMSM_VERBOSE=1` to get the parser's progress log on stderr.
 
-See [test_pyosmptparser.py](/test_pyosmptparser.py) for a complete example.
+See [test_pyosmptparser.py](/test_pyosmptparser.py) for a complete example. `areas.pbf` is a copy of osmptparser's `tests/areas.pbf` fixture.
 
 ## Develop
 
