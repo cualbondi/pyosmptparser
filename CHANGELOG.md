@@ -1,3 +1,9 @@
+## v4.1.0
+
+Deterministic output order: upgrade to [osmptparser v4.1.0](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md).
+
+ - Changed: `get_public_transports(gap)` and `get_areas(gap)` return their results sorted by osm id (relations first, then standalone ways for `get_areas`), the same order on every run and for any `num_threads`. Before, the order depended on which worker thread finished first.
+
 ## v4.0.0
 
 Areas: upgrade to [osmptparser v4.0.0](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md), which assembles areas as real multipolygons and keeps relation member roles.
