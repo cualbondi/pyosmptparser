@@ -17,6 +17,20 @@ struct Node {
     pub lon: f64,
     #[pyo3(get, set)]
     pub lat: f64,
+    #[pyo3(get, set)]
+    pub role: String,
+}
+
+impl From<osmptparser::Node> for Node {
+    fn from(n: osmptparser::Node) -> Self {
+        Node {
+            id: n.id,
+            tags: n.tags,
+            lon: n.lon,
+            lat: n.lat,
+            role: n.role,
+        }
+    }
 }
 
 #[pymethods]
@@ -27,7 +41,10 @@ impl Node {
     }
 
     fn __repr__(&self) -> String {
-        format!("Node(id={}, lon={}, lat={})", self.id, self.lon, self.lat)
+        format!(
+            "Node(id={}, lon={}, lat={}, role={:?})",
+            self.id, self.lon, self.lat, self.role
+        )
     }
 }
 
@@ -104,6 +121,64 @@ impl PublicTransport {
     }
 }
 
+#[pyclass(dict)]
+struct Area {
+    #[pyo3(get, set)]
+    pub id: u64,
+    #[pyo3(get, set)]
+    pub id_type: String,
+    pub tags: Tags,
+    pub info: Tags,
+    pub geometry: Vec<Vec<Vec<(f64, f64)>>>, // polygons -> rings -> (lon, lat)
+    pub status: ParseStatus,
+}
+
+impl From<osmptparser::Area> for Area {
+    fn from(a: osmptparser::Area) -> Self {
+        Area {
+            id: a.id,
+            id_type: a.id_type.to_string(),
+            tags: a.tags,
+            info: a.info,
+            geometry: a.geometry,
+            status: a.parse_status.into(),
+        }
+    }
+}
+
+#[pymethods]
+impl Area {
+    #[getter(tags)]
+    fn get_tags<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        Ok(self.tags.as_ref().into_pyobject(py)?.into_any())
+    }
+
+    #[getter(info)]
+    fn get_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        Ok(self.info.as_ref().into_pyobject(py)?.into_any())
+    }
+
+    #[getter(geometry)]
+    fn get_geometry<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        Ok(self.geometry.clone().into_pyobject(py)?.into_any())
+    }
+
+    #[getter(status)]
+    fn get_status(&self) -> ParseStatus {
+        self.status.clone()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Area(id={}{}, name={:?}, status={})",
+            self.id_type,
+            self.id,
+            self.tags.get("name").map(String::as_str).unwrap_or(""),
+            self.status.code
+        )
+    }
+}
+
 #[pyclass]
 struct Parser {
     p: LibParser,
@@ -165,16 +240,7 @@ impl Parser {
                     id: r.id,
                     tags: r.tags,
                     info: r.info,
-                    stops: r
-                        .stops
-                        .iter()
-                        .map(|n| Node {
-                            id: n.id,
-                            tags: n.tags.clone(),
-                            lon: n.lon,
-                            lat: n.lat,
-                        })
-                        .collect(),
+                    stops: r.stops.into_iter().map(Node::from).collect(),
                     geometry: ways
                         .iter()
                         .map(|v| v.iter().map(|n| (n.lon, n.lat)).collect())
@@ -184,6 +250,13 @@ impl Parser {
             })
         })
     }
+
+    /// Build one Area (multipolygon) per parsed relation plus one per parsed standalone
+    /// closed way, bridging gaps up to the given tolerance in meters
+    fn get_areas(&self, py: Python<'_>, gap: f64) -> Vec<Area> {
+        let p = self.p.clone();
+        py.detach(move || p.get_areas(gap).into_iter().map(Area::from).collect())
+    }
 }
 
 /// Python bindings for osmptparser
@@ -192,6 +265,7 @@ fn pyosmptparser(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_class::<Node>()?;
     m.add_class::<PublicTransport>()?;
+    m.add_class::<Area>()?;
     m.add_class::<Parser>()?;
     m.add_class::<ParseStatus>()?;
     Ok(())
