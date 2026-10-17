@@ -235,9 +235,9 @@ dependencies = [
 
 [[package]]
 name = "osmptparser"
-version = "4.1.0"
+version = "4.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cbc897e3bce6245d3ba818332ec2208fd559daec832c5de521e881d1c2986a7"
+checksum = "513db5133c0a70aae0b07daa71b258ee1cb21e7834a4cfa7a4b919a3449642d8"
 dependencies = [
  "crossbeam",
  "num_cpus",
@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "pyosmptparser"
-version = "4.1.0"
+version = "4.1.1"
 dependencies = [
  "num_cpus",
  "osmptparser",
