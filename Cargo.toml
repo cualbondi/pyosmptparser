@@ -1,6 +1,6 @@
 [package]
 name = "pyosmptparser"
-version = "4.1.0"
+version = "4.1.1"
 authors = ["Julian Perelli <jperelli@gmail.com>"]
 edition = "2021"
 license = "AGPL-3.0-or-later"
@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # osmptparser = { path = "../osmptparser" }
-osmptparser = "4.1.0"
+osmptparser = "4.1.1"
 
 pyo3 = { version = "0.27", features = ["extension-module", "abi3-py39"] }
 num_cpus = "1.17.0"

@@ -1,3 +1,9 @@
+## v4.1.1
+
+Bugfix: upgrade to [osmptparser v4.1.1](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md).
+
+ - Fixed: `Parser.new_aa`, `Parser.new_ptv2` and `Parser(path, filter)` could stop reading a .pbf file partway through without an error, so `get_areas` / `get_public_transports` returned only part of the file (or nothing). Whole files are read now.
+
 ## v4.1.0
 
 Deterministic output order: upgrade to [osmptparser v4.1.0](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md).
