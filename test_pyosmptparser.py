@@ -140,3 +140,24 @@ def test_results_are_sorted_by_id_whatever_the_thread_count():
     pt_ids = [pt.id for pt in pyosmptparser.Parser.new_ptv2('test.pbf', 1).get_public_transports(150)]
     assert pt_ids == [85965, 2030162]
     assert pt_ids == [pt.id for pt in pyosmptparser.Parser.new_ptv2('test.pbf', 4).get_public_transports(150)]
+
+
+def test_platform_way_members_are_not_part_of_the_route():
+    # areas.pbf: route 400 is a closed ring (ways 1 + 2) plus way 8, a `platform` area
+    # beside the road; route 500 lists its ways starting from the middle of the chain
+    p = pyosmptparser.Parser.new_ptv2('areas.pbf')
+    pts = p.get_public_transports(500)
+    assert [pt.id for pt in pts] == [400, 500]
+
+    bus = pts[0]
+    assert bus.status.code == 0
+    assert len(bus.geometry) == 1 and len(bus.geometry[0]) == 5
+    assert not _has_point(bus.geometry[0], 0.4, 0.0001)
+    assert [(s.id, s.role) for s in bus.stops] == [(61, 'stop')]
+
+    out_of_order = pts[1]
+    assert out_of_order.status.code == 101
+    assert out_of_order.status.detail == 'Sorted'
+    assert len(out_of_order.geometry) == 1 and len(out_of_order.geometry[0]) == 6
+    assert _has_point(out_of_order.geometry[0], 0.0, 6.0)
+    assert _has_point(out_of_order.geometry[0], 0.5, 6.0)

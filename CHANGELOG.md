@@ -1,3 +1,11 @@
+## v4.2.0
+
+Route itineraries by member role: upgrade to [osmptparser v4.2.0](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md).
+
+ - Changed: `get_public_transports(gap)` builds the route geometry only from the way members whose role is part of the itinerary (`''`, `forward`, `backward`, `hail_and_ride`). Way members with role `platform*` / `stop*` (platform areas or lines beside the road, stop ways) are no longer chained in, so routes that came out `Broken` (501) or `Joined` (102) with zig-zags to the platforms now parse as `Ok`. `stops` are unchanged.
+ - Changed: when the greedy sort from the first way member leaves the chain in pieces (first member in the middle of the route), the sort is retried from a way with a free endpoint, giving `Sorted` (101) instead of `Broken`.
+ - Added: `areas.pbf` fixture gets a `platform` way member on route 400 and an out-of-order route 500, with a test for both.
+
 ## v4.1.1
 
 Bugfix: upgrade to [osmptparser v4.1.1](https://github.com/cualbondi/osmptparser/blob/master/CHANGELOG.md).
